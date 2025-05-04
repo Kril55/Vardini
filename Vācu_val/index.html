@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vārdu apguve</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #056d1f;
+            margin-bottom: 10px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* Show 4 columns */
+            gap: 20px;
+            width: 100%;
+            max-width: 1680px; /* Accommodate 4 images of 400px width plus gaps */
+            justify-items: center;
+            padding: 20px;
+        }
+        .image-container {
+            position: relative;
+            height: 300px; /* Set fixed height */
+            width: 400px;  /* Set fixed width */
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            cursor: ew-resize;
+            margin-bottom: 20px;
+        }
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Changed from cover to contain */
+            background-color: #f5f5f5; /* Optional: adds a background color */
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 100%;
+            overflow: hidden;
+            background-color: rgba(0, 0, 0, 0.85); /* Increased opacity */
+            transition: background-color 0.1s, width 0.1s; /* Reduced from 0.3s to 0.1s */
+        }
+        .overlay img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.2; /* Added lower opacity for the image */
+            transition: opacity 0.05s; /* Reduced from 0.3s to 0.1s */
+        }
+        .word {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgb(242, 209, 198);
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.8);
+            width: 90%;  /* Add width to allow for margins */
+            text-align: center;  /* Center the text */
+            white-space: pre-wrap;  /* Allow text to wrap */
+            word-wrap: break-word;  /* Break long words if needed */
+        }
+        .divider {
+            position: absolute;
+            width: 4px;
+            height: 100%;
+            background-color: #ff9f1c;
+            left: 0;
+            top: 0;
+            cursor: ew-resize;
+        }
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #ff4d4d;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+        .delete-btn:hover {
+            opacity: 1;
+        }
+        .info-icon {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .info-icon .icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            background-color: #a9a957;
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            font-style: italic;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .info-icon .tooltip {
+            position: absolute;
+            right: 30px;
+            top: 0;
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            width: 200px;
+            display: none;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .info-icon:hover .tooltip {
+            display: block;
+        }
+
+        .info-icon .tooltip::after {
+            content: '';
+            position: absolute;
+            right: -5px;
+            top: 10px;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 5px solid #333;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 30px;  /* Palielināts no 15px uz 30px */
+            background-color: #e9ecef;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+        .control-group {
+            margin: 0 20px 15px 20px;  /* Pievienots kreisais un labais margin */
+            padding: 0 10px;  /* Pievienots papildus padding */
+        }
+        .clear-all {
+            margin: 20px 20px 0 20px !important;
+            padding: 20px 10px 0 10px !important;
+            border-top: 1px solid #ccc;
+            text-align: right; /* Pievieno šo līniju */
+        }
+
+        .clear-all-btn-container {
+            position: relative;
+            display: inline-block;
+            margin-right: 20px; /* Pievieno atkāpi no labās malas */
+        }
+
+        .clear-all-btn-container .warning-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            width: 200px;
+            display: none;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .clear-all-btn-container:hover .warning-tooltip {
+            display: block;
+        }
+
+        .clear-all-btn-container .warning-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+
+        /* Add media query for responsive design */
+        @media (max-width: 1720px) {
+            .container {
+                grid-template-columns: repeat(3, 1fr);
+                max-width: 1260px;
+            }
+        }
+
+        @media (max-width: 1300px) {
+            .container {
+                grid-template-columns: repeat(2, 1fr);
+                max-width: 840px;
+            }
+        }
+
+        @media (max-width: 880px) {
+            .container {
+                grid-template-columns: 1fr;
+                max-width: 420px;
+            }
+        }
+
+        #add-button {
+            padding: 15px 30px;  /* Palielināts iekšējais attālums */
+            font-size: 18px;     /* Palielināts teksta izmērs */
+            background-color: #8c939e;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #add-button:hover {
+            background-color: #025d2c;
+        }
+
+        #clear-all-button {
+            padding: 10px 10px;
+            font-size: 14px;
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #clear-all-button:hover {
+            background-color: #ff3333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Vārdiņu apguve</h1>
+    
+    <div class="info-icon">
+        <span class="icon">i</span>
+        <div class="tooltip">Velc vertikālo līniju pa labi, lai redzētu vārdu. Velc atpakaļ pa kreisi, lai redzētu tikai attēlu.</div>
+    </div>
+    
+    <div class="controls">
+        <h2>Pievienot jaunu vārdu</h2>
+        <div class="control-group">
+            <label for="word-input">Vārds, ko vēlies apgūt:</label>
+            <input type="text" id="word-input" placeholder="Piemērs: der Apfel">
+        </div>
+        <div class="control-group">
+            <label for="image-url">Attēla URL:</label>
+            <input type="text" id="image-url" placeholder="https://example.com/image.jpg">
+        </div>
+        <button id="add-button">Pievienot vārdu</button>
+        
+        <div class="clear-all" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ccc;">
+            <div class="clear-all-btn-container">
+                <button id="clear-all-button" style="background-color: #ff4d4d;">Dzēst visus vārdus</button>
+                <div class="warning-tooltip">Uzmanību: šī darbība dzēsīs visus pievienotos vārdus!</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container" id="images-container">
+        <!-- Attēli tiks pievienoti dinamiski ar JavaScript -->
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Sākotnējie vārdi un attēli
+            const initialWords = [
+                { word: 'der Bissen (kumoss)', imageUrl: 'apple.png' },
+                { word: 'die Reibung (berze)', imageUrl: 'friction.png' },
+                { word: 'der Pfanzen', imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Cirsium_vulgare_plant.jpg/500px-Cirsium_vulgare_plant.jpg' },
+                { word: 'beschuldigen (apvainot)', imageUrl: 'blame.png' },
+                { word: 'die Blume', imageUrl: '/api/placeholder/400/300' }
+            ];
+
+            function saveWordsToLocalStorage(words) {
+                localStorage.setItem('germanWords', JSON.stringify(words));
+            }
+
+            function loadWordsFromLocalStorage() {
+                const savedWords = localStorage.getItem('germanWords');
+                return savedWords ? JSON.parse(savedWords) : initialWords;
+            }
+            
+            const container = document.getElementById('images-container');
+            
+            // Funkcija, kas pievieno vārdu
+            function addWord(word, imageUrl = '/api/placeholder/400/300') {
+                // Izveido jauno attēla konteineru
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'image-container';
+                imageContainer.id = 'image-' + Math.random().toString(36).substr(2, 9); // Unikāls ID
+                
+                // Izveido attēla elementu
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = word;
+                imageContainer.appendChild(img);
+                
+                // Izveido pārklājumu
+                const overlay = document.createElement('div');
+                overlay.className = 'overlay';
+                
+                // Pārklājuma attēls
+                const overlayImg = document.createElement('img');
+                overlayImg.src = imageUrl;
+                overlayImg.alt = word + ' ar tekstu';
+                overlay.appendChild(overlayImg);
+                
+                // Vārda teksts
+                const wordElement = document.createElement('div');
+                wordElement.className = 'word';
+                wordElement.textContent = word;
+                overlay.appendChild(wordElement);
+                
+                imageContainer.appendChild(overlay);
+                
+                // Izveido dalījuma līniju
+                const divider = document.createElement('div');
+                divider.className = 'divider';
+                imageContainer.appendChild(divider);
+                
+                // Pievieno dzēšanas pogu
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.innerHTML = '&times;';
+                deleteBtn.title = 'Dzēst šo vārdu';
+                deleteBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    imageContainer.style.transition = 'all 0.3s';
+                    imageContainer.style.opacity = '0';
+                    imageContainer.style.transform = 'scale(0.8)';
+                    
+                    setTimeout(() => {
+                        container.removeChild(imageContainer);
+                        
+                        // Save the updated state after deletion
+                        const currentWords = Array.from(container.children).map(child => {
+                            const wordElement = child.querySelector('.word');
+                            const img = child.querySelector('img');
+                            return {
+                                word: wordElement.textContent,
+                                imageUrl: img.src
+                            };
+                        });
+                        saveWordsToLocalStorage(currentWords);
+                        
+                        if (container.children.length === 0) {
+                            showEmptyMessage();
+                        }
+                    }, 300);
+                });
+                imageContainer.appendChild(deleteBtn);
+                
+                // Pievieno konteineru galvenajam konteineram
+                container.appendChild(imageContainer);
+                
+                // Uzstāda interaktivitāti
+                setupDragFunctionality(imageContainer);
+                
+                // Ja ir "nav attēlu" paziņojums, noņem to
+                removeEmptyMessage();
+
+                // After adding the word, save the current state
+                const currentWords = Array.from(container.children).map(child => {
+                    const wordElement = child.querySelector('.word');
+                    const img = child.querySelector('img');
+                    return {
+                        word: wordElement.textContent,
+                        imageUrl: img.src
+                    };
+                });
+                
+                saveWordsToLocalStorage(currentWords);
+            }
+            
+            // Funkcija, kas uzstāda interaktivitāti attēlam
+            function setupDragFunctionality(container) {
+                const overlay = container.querySelector('.overlay');
+                const divider = container.querySelector('.divider');
+                let isDragging = false;
+                
+                // Funkcija, kas atjaunina vertikālo līniju un pārklājumu
+                function updateDividerPosition(clientX) {
+                    const rect = container.getBoundingClientRect();
+                    let position = clientX - rect.left;
+                    
+                    // Ierobežojam pozīciju konteinera robežās
+                    if (position < 0) position = 0;
+                    if (position > rect.width) position = rect.width;
+                    
+                    // Atjauninām līnijas un pārklājuma pozīciju
+                    const percentage = (position / rect.width) * 100;
+                    divider.style.left = `${percentage}%`;
+                    overlay.style.width = `${percentage}%`;
+                    
+                    // Update image opacity based on overlay width
+                    const overlayImg = overlay.querySelector('img');
+                    if (percentage > 50) {
+                        overlayImg.style.opacity = '0.8'; // More transparent when word is visible
+                    } else {
+                        overlayImg.style.opacity = '1'; // Fully visible when word is hidden
+                    }
+                }
+                
+                // Peles notikumi
+                container.addEventListener('mousedown', function(e) {
+                    if (e.target === container || e.target.tagName === 'IMG' || e.target === overlay || e.target === divider) {
+                        isDragging = true;
+                        updateDividerPosition(e.clientX);
+                    }
+                });
+                
+                document.addEventListener('mousemove', function(e) {
+                    if (isDragging) {
+                        updateDividerPosition(e.clientX);
+                    }
+                });
+                
+                document.addEventListener('mouseup', function() {
+                    isDragging = false;
+                });
+                
+                // Skārienjutīgie notikumi mobilajām ierīcēm
+                container.addEventListener('touchstart', function(e) {
+                    if (e.target === container || e.target.tagName === 'IMG' || e.target === overlay || e.target === divider) {
+                        isDragging = true;
+                        updateDividerPosition(e.touches[0].clientX);
+                    }
+                });
+                
+                document.addEventListener('touchmove', function(e) {
+                    if (isDragging) {
+                        updateDividerPosition(e.touches[0].clientX);
+                    }
+                });
+                
+                document.addEventListener('touchend', function() {
+                    isDragging = false;
+                });
+                
+                // Novēršam attēla vilkšanu
+                container.addEventListener('dragstart', function(e) {
+                    e.preventDefault();
+                });
+            }
+            
+            // Funkcija, kas parāda paziņojumu, ja nav attēlu
+            function showEmptyMessage() {
+                // Pārbauda, vai paziņojums jau eksistē
+                if (!document.getElementById('empty-message')) {
+                    const emptyMessage = document.createElement('div');
+                    emptyMessage.id = 'empty-message';
+                    emptyMessage.style.textAlign = 'center';
+                    emptyMessage.style.padding = '30px';
+                    emptyMessage.style.color = '#666';
+                    emptyMessage.style.fontStyle = 'italic';
+                    emptyMessage.innerHTML = 'Nav pievienotu vārdu. Izmanto formu augšpusē, lai pievienotu vārdus.';
+                    container.appendChild(emptyMessage);
+                }
+            }
+            
+            // Funkcija, kas noņem "nav attēlu" paziņojumu
+            function removeEmptyMessage() {
+                const emptyMessage = document.getElementById('empty-message');
+                if (emptyMessage) {
+                    container.removeChild(emptyMessage);
+                }
+            }
+            
+            // Funkcija, kas attīra visus attēlus
+            function clearAllImages() {
+                if (confirm('Vai tiešām vēlies dzēst visus vārdus?')) {
+                    while (container.firstChild) {
+                        container.removeChild(container.firstChild);
+                    }
+                    
+                    // Clear localStorage
+                    localStorage.removeItem('germanWords');
+                    
+                    showEmptyMessage();
+                }
+            }
+            
+            // Load saved words instead of initialWords
+            const savedWords = loadWordsFromLocalStorage();
+            savedWords.forEach(item => {
+                addWord(item.word, item.imageUrl);
+            });
+            
+            // Poga, lai pievienotu jaunu vārdu
+            document.getElementById('add-button').addEventListener('click', function() {
+                const wordInput = document.getElementById('word-input');
+                const imageUrlInput = document.getElementById('image-url');
+                
+                const word = wordInput.value.trim();
+                const imageUrl = imageUrlInput.value.trim() || '/api/placeholder/400/300';
+                
+                if (word) {
+                    addWord(word, imageUrl);
+                    wordInput.value = '';
+                    imageUrlInput.value = '';
+                } else {
+                    alert('Lūdzu, ievadi vārdu!');
+                }
+            });
+            
+            // Poga, lai dzēstu visus vārdus
+            document.getElementById('clear-all-button').addEventListener('click', function() {
+                clearAllImages();
+            });
+        });
+    </script>
+</body>
+</html>
